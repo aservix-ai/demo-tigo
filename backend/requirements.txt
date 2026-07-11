@@ -1,0 +1,10 @@
+# Core LangChain stack is already installed in .venv:
+langchain==1.3.13
+langchain-core==1.4.9
+langchain-anthropic==1.4.8
+langchain-nvidia-ai-endpoints==1.4.3
+langgraph==1.2.9
+langsmith==0.10.2
+pandas>=2.2
+rich>=13.7
+python-dotenv>=1.0

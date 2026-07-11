@@ -1,0 +1,61 @@
+client_id,client_name,country,sector,credit_terms_days,monthly_billing_usd
+GT-B2B-001,Ministerio de Desarrollo Digital (Gobierno),Guatemala,gobierno,60,2696960.0
+GT-B2B-002,Distribuidora Andina de Alimentos Guatemala,Guatemala,retail,45,1854720.0
+GT-B2B-003,Cementos del Pacífico Guatemala,Guatemala,manufactura,60,1712049.23
+GT-B2B-004,Logística Interoceánica Guatemala,Guatemala,logística,30,1569378.46
+GT-B2B-005,Energía Verde Latam Guatemala,Guatemala,energía,45,1426707.69
+GT-B2B-006,Agroexportadora del Valle Guatemala,Guatemala,agroindustria,60,1284036.92
+GT-B2B-007,Clínicas Integradas Guatemala,Guatemala,salud,30,1141366.15
+GT-B2B-008,Textiles Metropolitanos Guatemala,Guatemala,banca,45,998695.38
+GT-B2B-009,Cadena de Farmacias Salud+ Guatemala,Guatemala,retail,60,856024.62
+GT-B2B-010,Aerolínea Regional Cóndor Guatemala,Guatemala,manufactura,30,713353.85
+GT-B2B-011,Minera Altiplano Guatemala,Guatemala,logística,45,570683.08
+GT-B2B-012,Supermercados La Cosecha Guatemala,Guatemala,energía,60,428012.31
+GT-B2B-013,Aseguradora del Sur Guatemala,Guatemala,agroindustria,30,285341.54
+GT-B2B-014,Constructora Meridiano Guatemala,Guatemala,salud,45,142670.77
+CO-B2B-001,Banco Continental del Istmo Colombia,Colombia,banca,30,3245649.0
+CO-B2B-002,Distribuidora Andina de Alimentos Colombia,Colombia,retail,45,2096686.61
+CO-B2B-003,Cementos del Pacífico Colombia,Colombia,manufactura,60,1564362.1
+CO-B2B-004,Logística Interoceánica Colombia,Colombia,logística,30,1254664.14
+CO-B2B-005,Energía Verde Latam Colombia,Colombia,energía,45,1051090.98
+CO-B2B-006,Agroexportadora del Valle Colombia,Colombia,agroindustria,60,906608.93
+CO-B2B-007,Clínicas Integradas Colombia,Colombia,salud,30,798504.38
+CO-B2B-008,Textiles Metropolitanos Colombia,Colombia,banca,45,714432.05
+CO-B2B-009,Cadena de Farmacias Salud+ Colombia,Colombia,retail,60,647091.1
+CO-B2B-010,Aerolínea Regional Cóndor Colombia,Colombia,manufactura,30,591880.81
+CO-B2B-011,Minera Altiplano Colombia,Colombia,logística,45,545754.52
+CO-B2B-012,Supermercados La Cosecha Colombia,Colombia,energía,60,506612.67
+CO-B2B-013,Aseguradora del Sur Colombia,Colombia,agroindustria,30,472960.11
+CO-B2B-014,Constructora Meridiano Colombia,Colombia,salud,45,443702.59
+PA-B2B-001,Banco Continental del Istmo Panama,Panama,banca,30,1896579.74
+PA-B2B-002,Distribuidora Andina de Alimentos Panama,Panama,retail,45,1225188.97
+PA-B2B-003,Cementos del Pacífico Panama,Panama,manufactura,60,914127.64
+PA-B2B-004,Logística Interoceánica Panama,Panama,logística,30,733157.1
+PA-B2B-005,Energía Verde Latam Panama,Panama,energía,45,614200.08
+PA-B2B-006,Agroexportadora del Valle Panama,Panama,agroindustria,60,529772.67
+PA-B2B-007,Clínicas Integradas Panama,Panama,salud,30,466602.28
+PA-B2B-008,Textiles Metropolitanos Panama,Panama,banca,45,417475.01
+PA-B2B-009,Cadena de Farmacias Salud+ Panama,Panama,retail,60,378124.64
+PA-B2B-010,Aerolínea Regional Cóndor Panama,Panama,manufactura,30,345862.77
+PA-B2B-011,Minera Altiplano Panama,Panama,logística,45,318909.09
+BO-B2B-001,Banco Continental del Istmo Bolivia,Bolivia,banca,30,1456302.3
+BO-B2B-002,Distribuidora Andina de Alimentos Bolivia,Bolivia,retail,45,940770.1
+BO-B2B-003,Cementos del Pacífico Bolivia,Bolivia,manufactura,60,701919.44
+BO-B2B-004,Logística Interoceánica Bolivia,Bolivia,logística,30,562959.91
+BO-B2B-005,Energía Verde Latam Bolivia,Bolivia,energía,45,471617.92
+BO-B2B-006,Agroexportadora del Valle Bolivia,Bolivia,agroindustria,60,406789.73
+BO-B2B-007,Clínicas Integradas Bolivia,Bolivia,salud,30,358283.9
+BO-B2B-008,Textiles Metropolitanos Bolivia,Bolivia,banca,45,320561.17
+BO-B2B-009,Cadena de Farmacias Salud+ Bolivia,Bolivia,retail,60,290345.71
+BO-B2B-010,Aerolínea Regional Cóndor Bolivia,Bolivia,manufactura,30,265573.2
+BO-B2B-011,Minera Altiplano Bolivia,Bolivia,logística,45,244876.62
+PY-B2B-001,Banco Continental del Istmo Paraguay,Paraguay,banca,30,1412141.76
+PY-B2B-002,Distribuidora Andina de Alimentos Paraguay,Paraguay,retail,45,912242.43
+PY-B2B-003,Cementos del Pacífico Paraguay,Paraguay,manufactura,60,680634.61
+PY-B2B-004,Logística Interoceánica Paraguay,Paraguay,logística,30,545888.86
+PY-B2B-005,Energía Verde Latam Paraguay,Paraguay,energía,45,457316.7
+PY-B2B-006,Agroexportadora del Valle Paraguay,Paraguay,agroindustria,60,394454.34
+PY-B2B-007,Clínicas Integradas Paraguay,Paraguay,salud,30,347419.39
+PY-B2B-008,Textiles Metropolitanos Paraguay,Paraguay,banca,45,310840.55
+PY-B2B-009,Cadena de Farmacias Salud+ Paraguay,Paraguay,retail,60,281541.34
+PY-B2B-010,Aerolínea Regional Cóndor Paraguay,Paraguay,manufactura,30,257520.02

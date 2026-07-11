@@ -8,3 +8,6 @@ langsmith==0.10.2
 pandas>=2.2
 rich>=13.7
 python-dotenv>=1.0
+ruff
+mypy
+pandas-stubs

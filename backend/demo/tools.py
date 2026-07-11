@@ -113,8 +113,8 @@ def get_margin_by_segment(country: str | None = None, months: int = 6) -> dict:
     months = max(2, min(int(months), 12))
     gm = fin.margin_by_segment(country, months)
     out = []
-    for (ctry, seg), grp in gm.groupby(["country", "segment"]):
-        grp = grp.sort_values("month")
+    for (ctry, seg), seg_rows in gm.groupby(["country", "segment"]):
+        grp = seg_rows.sort_values("month")
         last = grp.iloc[-1]
         out.append({
             "country": ctry, "segment": seg,

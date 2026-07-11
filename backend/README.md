@@ -21,7 +21,7 @@ are unchanged.
 
 ```bash
 .venv/bin/pip install -r requirements.txt   # pandas, rich, python-dotenv
-cp .env.example .env                        # add your ANTHROPIC_API_KEY
+cp .env.example .env                        # add your NVIDIA_API_KEY
 .venv/bin/python main.py preflight          # must print READY FOR DEMO
 .venv/bin/python main.py report --chat      # the demo command
 ```
@@ -93,11 +93,11 @@ data/*.csv  ──► demo/finance.py ──► demo/alarms.py ──► 9 alarm
                         ▼                     ▼
                   demo/tools.py  ◄── the LLM only sees tool outputs
                         │
-                  demo/agent.py   LangChain create_agent + claude-opus-4-8
+                  demo/agent.py   LangChain create_agent + nemotron-3-ultra-550b-a55b
                         │
                   demo/display.py rich terminal: dashboard, streaming, panels
 ```
 
-- Model: `claude-opus-4-8` (report/chat), `claude-haiku-4-5` (preflight ping).
+- Model: `nemotron-3-ultra-550b-a55b`.
 - Budgets use uniform monthly phasing (annual/12) — stated simplification.
 - Report and alarms are in Spanish; code and docs in English.

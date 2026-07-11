@@ -1,0 +1,23 @@
+# Ruff configuration for the Tigo demo backend.
+# The IDE Ruff extension and `ruff check` both pick this up.
+
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "PLW", # pylint warnings
+    "RUF", # ruff-specific
+]
+# Deliberately NOT selected:
+#  - PLC0415 (top-level imports): main.py lazy-imports langchain/pandas on purpose
+#    so `--help` and the API-key check stay instant.
+#  - T20 (print): the `__main__` harnesses and this CLI demo print by design.
+#  - PLR2004 (magic values): thresholds like "2 consecutive months" read fine inline.

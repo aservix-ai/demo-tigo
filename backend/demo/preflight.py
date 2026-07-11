@@ -18,28 +18,36 @@ from . import finance as fin
 console = Console()
 
 EXPECTED_ROWS = {
-    "revenue.csv": 900, "direct_costs.csv": 900, "opex.csv": 1200,
-    "capex.csv": 900, "budgets.csv": 70, "targets.csv": 30,
-    "clients.csv": 60, "invoices.csv": 1803,
+    "revenue.csv": 900,
+    "direct_costs.csv": 900,
+    "opex.csv": 1200,
+    "capex.csv": 900,
+    "budgets.csv": 70,
+    "targets.csv": 30,
+    "clients.csv": 60,
+    "invoices.csv": 1803,
 }
 
 
 def _check_api_key() -> str | None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return ("ANTHROPIC_API_KEY no está definida. Copia .env.example a .env "
-                "y coloca tu clave de https://console.anthropic.com/")
+    if not os.environ.get("NVIDIA_API_KEY"):
+        return (
+            "NVIDIA_API_KEY no está definida. Copia .env.example a .env "
+            "y coloca tu clave de https://build.nvidia.com"
+        )
     return None
 
 
 def _check_files() -> str | None:
-    import pandas as pd
+    import pandas as pd  # noqa: PLC0415
+
     for name, expected in EXPECTED_ROWS.items():
         path = cfg.DATA_DIR / name
         if not path.exists():
             return f"Falta {path}. Ejecuta: python main.py data"
         rows = len(pd.read_csv(path))
         if rows != expected:
-            return f"{name}: {rows} filas (esperadas {expected}). Regenera con: python main.py data"
+            return f"{name}: {rows} filas (esperadas {expected}). Regenera con: python main.py data"  # noqa: E501
     return None
 
 
@@ -61,7 +69,7 @@ def _check_consistency() -> str | None:
     inv_sum = inv.groupby(["month", "country"])["amount_usd"].sum()
     rev = d["revenue"]
     b2b = rev[rev["segment"] == "B2B"].set_index(["month", "country"])["revenue_usd"]
-    if not ((inv_sum - b2b).abs() < 0.01).all():
+    if not ((inv_sum - b2b).abs() < 0.01).all():  # noqa: PLR2004
         return "Ingresos B2B no cuadran con la suma de facturas (tie-out roto)"
     return None
 
@@ -70,25 +78,37 @@ def _check_alarms() -> str | None:
     got = [a.id for a in al.scan()]
     expected = set(cfg.EXPECTED_ALARMS)
     if set(got) != expected:
-        return (f"Alertas no coinciden con el manifiesto ensayado. "
-                f"Faltan: {expected - set(got) or '—'} · Sobran: {set(got) - expected or '—'}")
+        return (
+            f"Alertas no coinciden con el manifiesto ensayado. "
+            f"Faltan: {expected - set(got) or '—'} · "
+            f"Sobran: {set(got) - expected or '—'}"
+        )
     return None
 
 
 def _check_tools() -> str | None:
-    from .tools import ALL_TOOLS
+    from .tools import ALL_TOOLS  # noqa: PLC0415
+
     for t in ALL_TOOLS:
-        args = {"alarm_id": cfg.EXPECTED_ALARMS[0]} if t.name == "get_alarm_detail" else {}
+        args = (
+            {"alarm_id": cfg.EXPECTED_ALARMS[0]} if t.name == "get_alarm_detail" else {}
+        )
         try:
             json.dumps(t.invoke(args), allow_nan=False)
-        except Exception as e:  # noqa: BLE001 — any failure must abort the demo
+        except Exception as e:
             return f"Herramienta {t.name} falló: {e}"
 
     # Adversarial arguments the LLM plausibly produces live: accented /
     # lowercase countries, Spanish cost types, invalid alarm ids. Tools must
     # answer with data or a friendly error dict — never raise.
-    from .tools import (get_alarm_detail, get_budget_consumption,
-                        get_capex_status, get_pnl_summary, get_revenue_trend)
+    from .tools import (  # noqa: PLC0415
+        get_alarm_detail,
+        get_budget_consumption,
+        get_capex_status,
+        get_pnl_summary,
+        get_revenue_trend,
+    )
+
     adversarial = [
         (get_pnl_summary, {"country": "Panamá"}, False),
         (get_capex_status, {"country": "panama"}, False),
@@ -101,7 +121,7 @@ def _check_tools() -> str | None:
         try:
             out = t.invoke(args)
             json.dumps(out, allow_nan=False)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return f"Herramienta {t.name}({args}) lanzó excepción: {e}"
         if expect_error and "error" not in out:
             return f"Herramienta {t.name}({args}) debía devolver un error amigable"
@@ -109,14 +129,14 @@ def _check_tools() -> str | None:
 
 
 def _check_api_ping() -> str | None:
-    from langchain_anthropic import ChatAnthropic
+    from langchain_nvidia_ai_endpoints import ChatNVIDIA  # noqa: PLC0415
+
     # Ping both the cheap model and the actual demo model — a key restricted
     # to one of them would otherwise pass preflight and fail on stage.
-    for model_id in (cfg.PING_MODEL_ID, cfg.MODEL_ID):
-        try:
-            ChatAnthropic(model=model_id, max_tokens=8).invoke("ping")
-        except Exception as e:  # noqa: BLE001
-            return f"Ping a la API de Anthropic falló ({model_id}): {e}"
+    try:
+        ChatNVIDIA(model=cfg.MODEL_ID, max_tokens=8).invoke("ping")
+    except Exception as e:
+        return f"Ping a la API de NVIDIA falló: {e}"
     return None
 
 
@@ -126,7 +146,7 @@ CHECKS = [
     ("Consistencia financiera", _check_consistency),
     ("Manifiesto de alertas (9 exactas)", _check_alarms),
     ("Herramientas del agente", _check_tools),
-    ("Ping a la API de Anthropic", _check_api_ping),
+    ("Ping a la API de NVIDIA", _check_api_ping),
 ]
 
 
@@ -136,12 +156,20 @@ def run() -> int:
         error = check()
         if error:
             console.print(f"  [red]✗[/red] {label}")
-            console.print(Panel(f"[red]{error}[/red]",
-                                title="[bold red]NO LISTO PARA LA DEMO[/bold red]",
-                                border_style="red"))
+            console.print(
+                Panel(
+                    f"[red]{error}[/red]",
+                    title="[bold red]NO LISTO PARA LA DEMO[/bold red]",
+                    border_style="red",
+                )
+            )
             return 1
         console.print(f"  [green]✓[/green] {label}")
-    console.print(Panel("[bold green]READY FOR DEMO[/bold green] — "
-                        "datos íntegros, 9 alertas ensayadas, API accesible.",
-                        border_style="green"))
+    console.print(
+        Panel(
+            "[bold green]READY FOR DEMO[/bold green] — "
+            "datos íntegros, 9 alertas ensayadas, API accesible.",
+            border_style="green",
+        )
+    )
     return 0

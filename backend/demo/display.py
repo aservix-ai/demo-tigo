@@ -145,7 +145,10 @@ def alarm_panels() -> None:
         )
         console.print(Panel(
             body,
-            title=f"[{style}] {_SEV_LABEL[a.severity]} [/{style}] [bold]{a.id}[/bold] · {a.rule_name}",
+            title=(
+                f"[{style}] {_SEV_LABEL[a.severity]} [/{style}] "
+                f"[bold]{a.id}[/bold] · {a.rule_name}"
+            ),
             title_align="left", border_style="red" if a.severity != "medium" else "yellow",
         ))
 
@@ -172,7 +175,7 @@ def chat_loop(agent, thread_id: str = "demo") -> None:
             stream_turn(agent, question, thread_id)
         except KeyboardInterrupt:
             console.print("\n[dim]Respuesta interrumpida.[/dim]")
-        except Exception as e:  # noqa: BLE001 — never crash mid-demo
+        except Exception as e:
             console.print(Panel(f"[red]Error en la consulta: {escape(str(e))}[/red]\n"
                                 "Puedes reformular la pregunta e intentar de nuevo.",
                                 border_style="red"))

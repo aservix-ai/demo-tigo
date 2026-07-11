@@ -9,6 +9,7 @@ CSVs on every run. The CSVs are committed; the live demo never regenerates them.
 """
 
 from datetime import timedelta
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -75,14 +76,14 @@ def _build_invoices(rng: np.random.Generator, clients: pd.DataFrame) -> pd.DataF
     invoices (A8) and Guatemala-wide payment-delay stress from Mar 2026 (A7)."""
     # Extra payment delay (days) for Guatemala invoices, by issue month.
     gt_stress = {"2026-03": 10, "2026-04": 16, "2026-05": 24, "2026-06": 28}
-    rows = []
+    rows: list[dict] = []  # paid_date is None for the seeded unpaid invoices
     for c in clients.itertuples():
         for m in MONTHS:
             t = _month_index(m)
-            amount = c.monthly_billing_usd * (1 + cfg.MONTHLY_GROWTH) ** t
+            amount = cast(float, c.monthly_billing_usd) * (1 + cfg.MONTHLY_GROWTH) ** t
             amount *= rng.lognormal(0, 0.02)
             issue = pd.Timestamp(m.year, m.month, 5)
-            due = issue + timedelta(days=int(c.credit_terms_days))
+            due = issue + timedelta(days=int(cast(float, c.credit_terms_days)))
             delay = float(np.clip(rng.normal(6, 5), 0, 24))
             delay += gt_stress.get(str(m), 0) if c.country == "Guatemala" else 0
             paid = due + timedelta(days=round(delay))
@@ -97,11 +98,11 @@ def _build_invoices(rng: np.random.Generator, clients: pd.DataFrame) -> pd.DataF
             })
 
     # Seeded A8: three unpaid "connectivity project" invoices for the gov client.
-    for m in ["2025-12", "2026-01", "2026-02"]:
-        p = pd.Period(m, freq="M")
+    for ym in ["2025-12", "2026-01", "2026-02"]:
+        p = pd.Period(ym, freq="M")
         issue = pd.Timestamp(p.year, p.month, 5)
         rows.append({
-            "invoice_id": f"INV-{cfg.SEEDED_CLIENT_ID}-{m}-PROY",
+            "invoice_id": f"INV-{cfg.SEEDED_CLIENT_ID}-{ym}-PROY",
             "client_id": cfg.SEEDED_CLIENT_ID,
             "country": "Guatemala",
             "issue_date": issue.date(),
@@ -171,7 +172,8 @@ def _build_direct_costs(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.D
 def _build_opex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFrame:
     rev_by_cm = revenue.groupby(["month", "country"])["revenue_usd"].sum()
     rows = []
-    for (month, country), rev in rev_by_cm.items():
+    for key, rev in rev_by_cm.items():
+        month, country = cast(tuple[str, str], key)
         for cat, rate in cfg.OPEX_RATE.items():
             amount = rev * rate * rng.lognormal(0, 0.010)
             rows.append({"month": month, "country": country,
@@ -211,7 +213,8 @@ def _build_opex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFrame
 def _build_capex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFrame:
     rev_by_cm = revenue.groupby(["month", "country"])["revenue_usd"].sum()
     rows = []
-    for (month, country), rev in rev_by_cm.items():
+    for key, rev in rev_by_cm.items():
+        month, country = cast(tuple[str, str], key)
         for cat, rate in cfg.CAPEX_RATE.items():
             spent = rev * rate * rng.lognormal(0, 0.015)
             rows.append({"month": month, "country": country, "category": cat,
@@ -245,11 +248,15 @@ def _build_budgets(opex: pd.DataFrame, capex: pd.DataFrame) -> pd.DataFrame:
     """
     rows = []
     fy25_opex = opex[opex["month"].str.startswith("2025")]
-    for (country, cat), total in fy25_opex.groupby(["country", "category"])["amount_usd"].sum().items():
+    opex_totals = fy25_opex.groupby(["country", "category"])["amount_usd"].sum()
+    for key, total in opex_totals.items():
+        country, cat = cast(tuple[str, str], key)
         rows.append({"year": cfg.BUDGET_YEAR, "country": country, "cost_type": "OPEX",
                      "category": cat, "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2)})
     fy25_capex = capex[capex["month"].str.startswith("2025")]
-    for (country, cat), total in fy25_capex.groupby(["country", "category"])["spent_usd"].sum().items():
+    capex_totals = fy25_capex.groupby(["country", "category"])["spent_usd"].sum()
+    for key, total in capex_totals.items():
+        country, cat = cast(tuple[str, str], key)
         rows.append({"year": cfg.BUDGET_YEAR, "country": country, "cost_type": "CAPEX",
                      "category": cat, "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2)})
     return pd.DataFrame(rows)
@@ -298,7 +305,9 @@ def generate(verbose: bool = True) -> None:
 
 def _print_summary(revenue, direct_costs, opex, capex) -> None:
     """Consistency summary so seeded ratios can be eyeballed after generation."""
-    ytd = lambda df: df[df["month"].str.startswith("2026")]
+    def ytd(df):
+        return df[df["month"].str.startswith("2026")]
+
     rev = ytd(revenue)
     svc = rev[rev["revenue_type"] == "service"]["revenue_usd"].sum()
     eq = rev[rev["revenue_type"] == "equipment"]["revenue_usd"].sum()

@@ -305,7 +305,7 @@ LANGSMITH_PROJECT=<project-name>   # optional, defaults to "default"
 
 # Model provider — set the one(s) you use
 OPENAI_API_KEY=<your-key>
-ANTHROPIC_API_KEY=<your-key>
+NVIDIA_API_KEY=<your-key>
 GOOGLE_API_KEY=<your-key>
 MISTRAL_API_KEY=<your-key>
 GROQ_API_KEY=<your-key>

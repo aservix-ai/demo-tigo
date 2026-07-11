@@ -2,8 +2,10 @@
 that enforces the report structure, Spanish output and the no-arithmetic rule.
 """
 
+import os
+
 from langchain.agents import create_agent
-from langchain_anthropic import ChatAnthropic
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from langgraph.checkpoint.memory import InMemorySaver
 
 from . import config as cfg
@@ -66,7 +68,16 @@ REPORT_REQUEST = (
 
 
 def build_agent():
-    model = ChatAnthropic(model=cfg.MODEL_ID, max_tokens=cfg.MAX_TOKENS)
+    model = ChatNVIDIA(
+        model=cfg.MODEL_ID,
+        api_key=os.environ["NVIDIA_API_KEY"],
+        temperature=1,
+        top_p=0.95,
+        max_tokens=16384,
+        reasoning_budget=16384,
+        chat_template_kwargs={"enable_thinking": True},
+    )
+
     return create_agent(
         model=model,
         tools=ALL_TOOLS,

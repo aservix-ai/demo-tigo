@@ -6,6 +6,7 @@ All monetary outputs are USD unless a function converts to millions for display.
 """
 
 from functools import lru_cache
+from typing import cast
 
 import pandas as pd
 
@@ -44,7 +45,9 @@ def pnl_summary(country: str | None = None) -> dict:
     def slice_(df, months):
         return df[df["month"].isin(months)]
 
-    ytd_months = [str(pd.Period(f"{FY}-{m:02d}", freq="M")) for m in range(1, AS_OF_PERIOD.month + 1)]
+    ytd_months = [
+        str(pd.Period(f"{FY}-{m:02d}", freq="M")) for m in range(1, AS_OF_PERIOD.month + 1)
+    ]
     py_months = [m.replace(FY, str(cfg.BUDGET_YEAR - 1)) for m in ytd_months]
 
     def block(months):
@@ -126,20 +129,21 @@ def budget_consumption(cost_type: str | None = None, country: str | None = None)
     rows = []
     for b in budgets.itertuples():
         key = (b.country, b.category)
+        budget_usd = cast(float, b.annual_budget_usd)
         ytd = float((opex_ytd if b.cost_type == "OPEX" else capex_ytd).get(key, 0.0))
         run_rate_fy = ytd / cfg.MONTHS_ELAPSED * 12
         row = {
             "country": b.country, "cost_type": b.cost_type, "category": b.category,
-            "annual_budget_usd": b.annual_budget_usd,
+            "annual_budget_usd": budget_usd,
             "ytd_actual_usd": round(ytd, 0),
-            "consumption_pct": round(ytd / b.annual_budget_usd * 100, 1),
-            "run_rate_fy_pct": round(run_rate_fy / b.annual_budget_usd * 100, 1),
+            "consumption_pct": round(ytd / budget_usd * 100, 1),
+            "run_rate_fy_pct": round(run_rate_fy / budget_usd * 100, 1),
             "months_remaining": cfg.MONTHS_REMAINING,
         }
         if b.cost_type == "CAPEX":
             committed = float(capex_committed.get(key, 0.0))
             row["committed_usd"] = round(committed, 0)
-            row["committed_pct"] = round(committed / b.annual_budget_usd * 100, 1)
+            row["committed_pct"] = round(committed / budget_usd * 100, 1)
         rows.append(row)
     # Explicit columns so an unmatched filter degrades to an empty-but-typed
     # frame instead of a column-less one (which breaks downstream access).
@@ -281,7 +285,7 @@ def top_overdue_clients(limit: int = 5) -> pd.DataFrame:
     recent = inv[inv["issue_date"] >= window_start]
     client_billed = recent.groupby(["country", "client_id"])["amount_usd"].sum()
     country_billed = recent.groupby("country")["amount_usd"].sum()
-    keys = list(zip(agg["country"], agg["client_id"]))
+    keys = list(zip(agg["country"], agg["client_id"], strict=True))
     agg["monthly_billing_usd"] = [round(client_billed.get(k, 0.0) / 6, 0) for k in keys]
     agg["share_of_country_b2b_pct"] = [
         round(client_billed.get(k, 0.0) / country_billed[k[0]] * 100, 1) for k in keys]

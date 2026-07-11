@@ -117,7 +117,7 @@ LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=<project-name>
 </environment-variables>
 
-Model-provider and tool-specific keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, etc.) depend on your stack — set them as needed.
+Model-provider and tool-specific keys (`NVIDIA_API_KEY`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, etc.) depend on your stack — set them as needed.
 
 ---
 

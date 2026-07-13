@@ -86,11 +86,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split('\n\n');
+        const parts = buffer.split(/\r?\n\r?\n/);
         buffer = parts.pop() || '';
 
         for (const part of parts) {
-          const lines = part.split('\n');
+          const lines = part.split(/\r?\n/);
           let dataStr = '';
 
           for (const line of lines) {

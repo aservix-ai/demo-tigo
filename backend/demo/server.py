@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessageChunk
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
@@ -16,6 +17,9 @@ from demo.agent import REPORT_REQUEST, build_agent
 from demo.config import DATA_DIR
 from demo.datagen import generate
 from demo.preflight import CHECKS
+
+# Enable LangChain verbose debugging to print model responses in the console
+set_debug(True)
 
 app = FastAPI(title="Demo Tigo API")
 
@@ -55,6 +59,7 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
             if mode == "messages":
                 token, _meta = data
                 if isinstance(token, AIMessageChunk) and token.text:
+                    print(token.text, end="", flush=True)
                     yield {
                         "event": "message",
                         "data": json.dumps({"type": "token", "content": token.text}),
@@ -63,6 +68,7 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
                 for _node, update in (data or {}).items():
                     for msg in (update or {}).get("messages", []):
                         for tc in getattr(msg, "tool_calls", None) or []:
+                            print(f"\n[Tool] {tc['name']}({tc['args']})\n", flush=True)
                             yield {
                                 "event": "message",
                                 "data": json.dumps({
@@ -73,11 +79,13 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
                                 }),
                             }
     except Exception as e:
+        print(f"\n[Error in event generator] {e}\n", flush=True)
         yield {
             "event": "message",
             "data": json.dumps({"type": "error", "content": str(e)}),
         }
     finally:
+        print("\n[Stream finished]\n", flush=True)
         yield {
             "event": "message",
             "data": json.dumps({"type": "done", "content": ""}),

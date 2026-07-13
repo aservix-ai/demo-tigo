@@ -105,9 +105,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               if (payload.type === 'token') {
                 setMessages((prev) => {
                   const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last && last.role === 'assistant') {
-                    last.content += payload.content;
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      content: updated[lastIdx].content + payload.content,
+                    };
                   }
                   return updated;
                 });
@@ -119,9 +122,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 setActiveTools((prev) => [...prev, tc]);
                 setMessages((prev) => {
                   const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last && last.role === 'assistant') {
-                    last.tools = [...(last.tools || []), tc];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === 'assistant') {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      tools: [...(updated[lastIdx].tools || []), tc],
+                    };
                   }
                   return updated;
                 });

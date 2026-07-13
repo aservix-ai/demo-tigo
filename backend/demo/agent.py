@@ -73,8 +73,8 @@ def build_agent():
         api_key=os.environ["NVIDIA_API_KEY"],
         temperature=1,
         top_p=0.95,
-        max_tokens=16384,
-        reasoning_budget=16384,
+        max_tokens=cfg.MAX_TOKENS,
+        reasoning_budget=cfg.REASONING_BUDGET,
         chat_template_kwargs={"enable_thinking": True},
     )
 

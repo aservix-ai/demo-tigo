@@ -112,7 +112,8 @@ CREDIT_TERMS_DAYS = [30, 45, 60]
 
 # --- LLM --------------------------------------------------------------------
 MODEL_ID = "nvidia/nemotron-3-ultra-550b-a55b"
-MAX_TOKENS = 8000
+MAX_TOKENS = 16384
+REASONING_BUDGET = 16384
 
 # --- Alarm thresholds ---------------------------------------------------------
 TH_BUDGET_CONSUMPTION_PCT = 85.0  # A1: YTD consumption > 85% with >= 2 months left

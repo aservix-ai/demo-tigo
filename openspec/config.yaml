@@ -1,0 +1,39 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Python 3.14, LangChain (1.3.13), LangGraph (1.2.9), pandas, Ruff (linter/formatter), mypy (static type checker)
+  Architecture: CLI-based AI agent harness for financial analysis (gross-margin report generation & interactive chat loops)
+  Testing: No automated unit testing framework (e.g., pytest) is currently configured. A custom pre-demo verification/consistency suite is run via `python3 main.py preflight` under `backend/`.
+  Style: Python type hinting, Ruff linter/formatter, mypy type verification.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false
+  verify:
+    test_command: "python3 main.py preflight"
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  test_runner: None (custom preflight verification script only)
+  test_layers:
+    - preflight: Verifies NVIDIA API key, CSV files row counts, financial Tie-out, alarm manifest consistency, agent tools serializability and error handling, and Nvidia LLM live ping.
+  coverage_tool: None
+  linter: Ruff (configured in backend/ruff.toml)
+  type_checker: mypy (configured in requirements.txt)
+  formatter: Ruff

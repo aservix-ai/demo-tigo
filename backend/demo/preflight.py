@@ -39,7 +39,7 @@ def _check_api_key() -> str | None:
 
 
 def _check_files() -> str | None:
-    import pandas as pd  # noqa: PLC0415
+    import pandas as pd
 
     for name, expected in EXPECTED_ROWS.items():
         path = cfg.DATA_DIR / name
@@ -47,7 +47,7 @@ def _check_files() -> str | None:
             return f"Falta {path}. Ejecuta: python main.py data"
         rows = len(pd.read_csv(path))
         if rows != expected:
-            return f"{name}: {rows} filas (esperadas {expected}). Regenera con: python main.py data"  # noqa: E501
+            return f"{name}: {rows} filas (esperadas {expected}). Regenera con: python main.py data"
     return None
 
 
@@ -69,7 +69,7 @@ def _check_consistency() -> str | None:
     inv_sum = inv.groupby(["month", "country"])["amount_usd"].sum()
     rev = d["revenue"]
     b2b = rev[rev["segment"] == "B2B"].set_index(["month", "country"])["revenue_usd"]
-    if not ((inv_sum - b2b).abs() < 0.01).all():  # noqa: PLR2004
+    if not ((inv_sum - b2b).abs() < 0.01).all():
         return "Ingresos B2B no cuadran con la suma de facturas (tie-out roto)"
     return None
 
@@ -87,12 +87,10 @@ def _check_alarms() -> str | None:
 
 
 def _check_tools() -> str | None:
-    from .tools import ALL_TOOLS  # noqa: PLC0415
+    from .tools import ALL_TOOLS
 
     for t in ALL_TOOLS:
-        args = (
-            {"alarm_id": cfg.EXPECTED_ALARMS[0]} if t.name == "get_alarm_detail" else {}
-        )
+        args = {"alarm_id": cfg.EXPECTED_ALARMS[0]} if t.name == "get_alarm_detail" else {}
         try:
             json.dumps(t.invoke(args), allow_nan=False)
         except Exception as e:
@@ -101,7 +99,7 @@ def _check_tools() -> str | None:
     # Adversarial arguments the LLM plausibly produces live: accented /
     # lowercase countries, Spanish cost types, invalid alarm ids. Tools must
     # answer with data or a friendly error dict — never raise.
-    from .tools import (  # noqa: PLC0415
+    from .tools import (
         get_alarm_detail,
         get_budget_consumption,
         get_capex_status,
@@ -129,7 +127,7 @@ def _check_tools() -> str | None:
 
 
 def _check_api_ping() -> str | None:
-    from langchain_nvidia_ai_endpoints import ChatNVIDIA  # noqa: PLC0415
+    from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
     # Ping both the cheap model and the actual demo model — a key restricted
     # to one of them would otherwise pass preflight and fail on stage.

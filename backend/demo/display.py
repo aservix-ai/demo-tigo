@@ -34,12 +34,15 @@ def sparkline(values: list[float]) -> str:
 
 
 def banner() -> None:
-    console.print(Panel(
-        "[bold cyan]TIGO — Agente de Análisis Financiero[/bold cyan]\n"
-        "[dim]OPEX · CAPEX · Ingresos · Margen bruto · Alertas   |   "
-        "datos simulados · cierre junio 2026[/dim]",
-        border_style="cyan", padding=(1, 4),
-    ))
+    console.print(
+        Panel(
+            "[bold cyan]TIGO — Agente de Análisis Financiero[/bold cyan]\n"
+            "[dim]OPEX · CAPEX · Ingresos · Margen bruto · Alertas   |   "
+            "datos simulados · cierre junio 2026[/dim]",
+            border_style="cyan",
+            padding=(1, 4),
+        )
+    )
 
 
 def dashboard() -> None:
@@ -52,8 +55,11 @@ def dashboard() -> None:
         tiles.add_column(justify="center", ratio=1)
 
     def tile(label: str, value: str) -> Panel:
-        return Panel(f"[bold white]{value}[/bold white]\n[dim]{label}[/dim]",
-                     border_style="bright_black", padding=(0, 1))
+        return Panel(
+            f"[bold white]{value}[/bold white]\n[dim]{label}[/dim]",
+            border_style="bright_black",
+            padding=(0, 1),
+        )
 
     capex = fin.capex_summary()
     tiles.add_row(
@@ -64,8 +70,11 @@ def dashboard() -> None:
     )
     console.print(tiles)
 
-    table = Table(title="Panorama por país — YTD junio 2026",
-                  header_style="bold cyan", border_style="bright_black")
+    table = Table(
+        title="Panorama por país — YTD junio 2026",
+        header_style="bold cyan",
+        border_style="bright_black",
+    )
     table.add_column("País")
     table.add_column("Ingresos ($M)", justify="right")
     table.add_column("GM servicio", justify="right")
@@ -75,8 +84,13 @@ def dashboard() -> None:
     trend = fin.revenue_trend(months=6)
     for country in cfg.COUNTRIES:
         cp = fin.pnl_summary(country)["ytd"]
-        series = (trend[trend["country"] == country]
-                  .groupby("month")["revenue_usd"].sum().sort_index().tolist())
+        series = (
+            trend[trend["country"] == country]
+            .groupby("month")["revenue_usd"]
+            .sum()
+            .sort_index()
+            .tolist()
+        )
         table.add_row(
             country,
             f"{cp['total_revenue_usd'] / 1e6:,.0f}",
@@ -122,7 +136,8 @@ def stream_turn(agent, user_input: str, thread_id: str = "demo") -> str:
                             # as rich markup (e.g. a stray "[/dim]").
                             live.console.print(
                                 f"  [dim cyan]→ consultando "
-                                f"{escape(tc['name'])}({escape(args)})[/dim cyan]")
+                                f"{escape(tc['name'])}({escape(args)})[/dim cyan]"
+                            )
                             if buffer and not buffer.endswith("\n\n"):
                                 buffer += "\n\n"
 
@@ -143,14 +158,17 @@ def alarm_panels() -> None:
             f"[dim]Umbral: {a.threshold}[/dim]",
             f"[green]Acción: {a.recommended_action}[/green]",
         )
-        console.print(Panel(
-            body,
-            title=(
-                f"[{style}] {_SEV_LABEL[a.severity]} [/{style}] "
-                f"[bold]{a.id}[/bold] · {a.rule_name}"
-            ),
-            title_align="left", border_style="red" if a.severity != "medium" else "yellow",
-        ))
+        console.print(
+            Panel(
+                body,
+                title=(
+                    f"[{style}] {_SEV_LABEL[a.severity]} [/{style}] "
+                    f"[bold]{a.id}[/bold] · {a.rule_name}"
+                ),
+                title_align="left",
+                border_style="red" if a.severity != "medium" else "yellow",
+            )
+        )
 
 
 def save_report(markdown_text: str) -> str:
@@ -161,8 +179,10 @@ def save_report(markdown_text: str) -> str:
 
 
 def chat_loop(agent, thread_id: str = "demo") -> None:
-    console.print("\n[bold cyan]Modo interactivo[/bold cyan] "
-                  "[dim](escribe tu pregunta; 'salir' para terminar)[/dim]\n")
+    console.print(
+        "\n[bold cyan]Modo interactivo[/bold cyan] "
+        "[dim](escribe tu pregunta; 'salir' para terminar)[/dim]\n"
+    )
     while True:
         try:
             question = Prompt.ask("[bold]Tú[/bold]")
@@ -176,8 +196,12 @@ def chat_loop(agent, thread_id: str = "demo") -> None:
         except KeyboardInterrupt:
             console.print("\n[dim]Respuesta interrumpida.[/dim]")
         except Exception as e:
-            console.print(Panel(f"[red]Error en la consulta: {escape(str(e))}[/red]\n"
-                                "Puedes reformular la pregunta e intentar de nuevo.",
-                                border_style="red"))
+            console.print(
+                Panel(
+                    f"[red]Error en la consulta: {escape(str(e))}[/red]\n"
+                    "Puedes reformular la pregunta e intentar de nuevo.",
+                    border_style="red",
+                )
+            )
         console.print()
     console.print("[dim]Sesión terminada.[/dim]")

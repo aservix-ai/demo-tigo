@@ -17,8 +17,7 @@ from . import finance as fin
 
 def _canon(s: str) -> str:
     """Accent-insensitive, case-insensitive canonical form ('Panamá' -> 'panama')."""
-    stripped = "".join(c for c in unicodedata.normalize("NFKD", s)
-                       if not unicodedata.combining(c))
+    stripped = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
     return stripped.casefold().strip().replace(" ", "_").replace("-", "_")
 
 
@@ -32,8 +31,10 @@ def _norm_country(country: str | None) -> tuple[str | None, dict | None]:
         return None, None
     match = _COUNTRY_LOOKUP.get(_canon(country))
     if match is None:
-        return None, {"error": f"país desconocido: '{country}'",
-                      "paises_validos": list(cfg.COUNTRIES)}
+        return None, {
+            "error": f"país desconocido: '{country}'",
+            "paises_validos": list(cfg.COUNTRIES),
+        }
     return match, None
 
 
@@ -42,8 +43,10 @@ def _norm_segment(segment: str | None) -> tuple[str | None, dict | None]:
         return None, None
     match = _SEGMENT_LOOKUP.get(_canon(segment))
     if match is None:
-        return None, {"error": f"segmento desconocido: '{segment}'",
-                      "segmentos_validos": list(cfg.SEGMENT_MIX)}
+        return None, {
+            "error": f"segmento desconocido: '{segment}'",
+            "segmentos_validos": list(cfg.SEGMENT_MIX),
+        }
     return match, None
 
 
@@ -52,8 +55,10 @@ def _norm_cost_type(cost_type: str | None) -> tuple[str | None, dict | None]:
         return None, None
     ct = _canon(cost_type).upper()
     if ct not in ("OPEX", "CAPEX"):
-        return None, {"error": f"tipo de costo desconocido: '{cost_type}'",
-                      "tipos_validos": ["OPEX", "CAPEX"]}
+        return None, {
+            "error": f"tipo de costo desconocido: '{cost_type}'",
+            "tipos_validos": ["OPEX", "CAPEX"],
+        }
     return ct, None
 
 
@@ -116,12 +121,16 @@ def get_margin_by_segment(country: str | None = None, months: int = 6) -> dict:
     for (ctry, seg), seg_rows in gm.groupby(["country", "segment"]):
         grp = seg_rows.sort_values("month")
         last = grp.iloc[-1]
-        out.append({
-            "country": ctry, "segment": seg,
-            "gm_pct": last["gm_pct"], "gm_target_pct": last["gm_target_pct"],
-            "variance_pp": last["variance_pp"],
-            "gm_trend_pct": grp["gm_pct"].tolist(),
-        })
+        out.append(
+            {
+                "country": ctry,
+                "segment": seg,
+                "gm_pct": last["gm_pct"],
+                "gm_target_pct": last["gm_target_pct"],
+                "variance_pp": last["variance_pp"],
+                "gm_trend_pct": grp["gm_pct"].tolist(),
+            }
+        )
     return {"as_of": cfg.AS_OF, "months": months, "segments": out}
 
 
@@ -143,7 +152,8 @@ def get_budget_consumption(cost_type: str | None = None, country: str | None = N
         return err
     bc = fin.budget_consumption(cost_type, country)
     return {
-        "as_of": cfg.AS_OF, "months_elapsed": cfg.MONTHS_ELAPSED,
+        "as_of": cfg.AS_OF,
+        "months_elapsed": cfg.MONTHS_ELAPSED,
         "months_remaining": cfg.MONTHS_REMAINING,
         "rows": _convert_musd(bc.drop(columns=["months_remaining"]).to_dict(orient="records")),
     }
@@ -190,13 +200,13 @@ def get_top_overdue_clients(limit: int = 5) -> dict:
     """
     limit = max(1, min(int(limit), 20))
     top = fin.top_overdue_clients(limit)
-    return {"as_of": cfg.AS_OF,
-            "clients": _convert_musd(top.to_dict(orient="records"))}
+    return {"as_of": cfg.AS_OF, "clients": _convert_musd(top.to_dict(orient="records"))}
 
 
 @tool(parse_docstring=True)
-def get_revenue_trend(segment: str | None = None, country: str | None = None,
-                      months: int = 6) -> dict:
+def get_revenue_trend(
+    segment: str | None = None, country: str | None = None, months: int = 6
+) -> dict:
     """Tendencia mensual de ingresos con variación MoM %, por país y segmento.
     Segmentos: Mobile_Prepaid, Mobile_Postpaid, Home, B2B, Tigo_Money, Equipment.
     Filtra por país y/o segmento siempre que sea posible.
@@ -228,7 +238,9 @@ def scan_alarms() -> dict:
     for a in alarms:
         by_sev[a.severity] = by_sev.get(a.severity, 0) + 1
     return {
-        "as_of": cfg.AS_OF, "alarm_count": len(alarms), "by_severity": by_sev,
+        "as_of": cfg.AS_OF,
+        "alarm_count": len(alarms),
+        "by_severity": by_sev,
         "alarms": _convert_musd([a.model_dump() for a in alarms]),
     }
 
@@ -244,8 +256,10 @@ def get_alarm_detail(alarm_id: str) -> dict:
     """
     alarm = next((a for a in al.scan() if a.id == alarm_id), None)
     if alarm is None:
-        return {"error": f"alerta '{alarm_id}' no encontrada",
-                "available": [a.id for a in al.scan()]}
+        return {
+            "error": f"alerta '{alarm_id}' no encontrada",
+            "available": [a.id for a in al.scan()],
+        }
     detail: dict = {"alarm": _convert_musd(alarm.model_dump())}
     if alarm.rule_id in ("A1", "A2", "A6"):
         tr = fin.opex_trend(alarm.country, months=7)
@@ -264,15 +278,23 @@ def get_alarm_detail(alarm_id: str) -> dict:
     elif alarm.rule_id == "A7":
         detail["collections"] = _convert_musd(fin.collections_summary(alarm.country))
         detail["top_overdue_clients"] = _convert_musd(
-            fin.top_overdue_clients(5).to_dict(orient="records"))
+            fin.top_overdue_clients(5).to_dict(orient="records")
+        )
     elif alarm.rule_id in ("A8", "A9"):
         detail["top_overdue_clients"] = _convert_musd(
-            fin.top_overdue_clients(5).to_dict(orient="records"))
+            fin.top_overdue_clients(5).to_dict(orient="records")
+        )
     return detail
 
 
 ALL_TOOLS = [
-    get_pnl_summary, get_margin_by_segment, get_budget_consumption,
-    get_capex_status, get_collections_status, get_top_overdue_clients,
-    get_revenue_trend, scan_alarms, get_alarm_detail,
+    get_pnl_summary,
+    get_margin_by_segment,
+    get_budget_consumption,
+    get_capex_status,
+    get_collections_status,
+    get_top_overdue_clients,
+    get_revenue_trend,
+    scan_alarms,
+    get_alarm_detail,
 ]

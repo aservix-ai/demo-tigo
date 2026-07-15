@@ -84,13 +84,10 @@ def cmd_report(args) -> None:
 
     if report_md.strip():
         path = display.save_report(report_md)
-        display.console.print(
-            f"\n[green]Informe guardado en[/green] [bold]{path}[/bold]"
-        )
+        display.console.print(f"\n[green]Informe guardado en[/green] [bold]{path}[/bold]")
     else:
         display.console.print(
-            "\n[yellow]No se generó narrativa del informe; "
-            "no se guardó archivo.[/yellow]"
+            "\n[yellow]No se generó narrativa del informe; no se guardó archivo.[/yellow]"
         )
 
     if args.chat:
@@ -113,11 +110,15 @@ def cmd_preflight(_args) -> None:
     sys.exit(preflight.run())
 
 
+def cmd_server(args) -> None:
+    import uvicorn
+
+    uvicorn.run("demo.server:app", host=args.host, port=args.port, reload=args.reload)
+
+
 def main() -> None:
     load_dotenv()
-    parser = argparse.ArgumentParser(
-        description="Demo Tigo — agente de análisis financiero"
-    )
+    parser = argparse.ArgumentParser(description="Demo Tigo — agente de análisis financiero")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("data", help="regenerar datos simulados").set_defaults(func=cmd_data)
@@ -128,12 +129,28 @@ def main() -> None:
         help="entrar a modo interactivo al terminar el informe",
     )
     p_report.set_defaults(func=cmd_report)
-    sub.add_parser("chat", help="modo interactivo de preguntas").set_defaults(
-        func=cmd_chat
-    )
+    sub.add_parser("chat", help="modo interactivo de preguntas").set_defaults(func=cmd_chat)
     sub.add_parser("preflight", help="verificación previa a la demo").set_defaults(
         func=cmd_preflight
     )
+    p_server = sub.add_parser("server", help="iniciar el servidor FastAPI")
+    p_server.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="dirección host para el servidor",
+    )
+    p_server.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="puerto del servidor",
+    )
+    p_server.add_argument(
+        "--reload",
+        action="store_true",
+        help="recarga automática del servidor",
+    )
+    p_server.set_defaults(func=cmd_server)
 
     args = parser.parse_args()
     args.func(args)

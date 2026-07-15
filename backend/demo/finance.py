@@ -19,9 +19,19 @@ FY = str(cfg.BUDGET_YEAR)
 
 @lru_cache(maxsize=1)
 def load() -> dict:
-    d = {name: pd.read_csv(cfg.DATA_DIR / f"{name}.csv") for name in
-         ["revenue", "direct_costs", "opex", "capex", "budgets", "targets",
-          "clients", "invoices"]}
+    d = {
+        name: pd.read_csv(cfg.DATA_DIR / f"{name}.csv")
+        for name in [
+            "revenue",
+            "direct_costs",
+            "opex",
+            "capex",
+            "budgets",
+            "targets",
+            "clients",
+            "invoices",
+        ]
+    }
     inv = d["invoices"]
     for col in ["issue_date", "due_date", "paid_date"]:
         inv[col] = pd.to_datetime(inv[col])
@@ -35,6 +45,7 @@ def _f(df: pd.DataFrame, country: str | None = None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # P&L / margins
 # ---------------------------------------------------------------------------
+
 
 def pnl_summary(country: str | None = None) -> dict:
     """Month + FY-YTD P&L: revenue, direct costs, gross profit/margin, OPEX by
@@ -80,9 +91,9 @@ def pnl_summary(country: str | None = None) -> dict:
         "month": block([cfg.AS_OF]),
         "ytd": ytd,
         "yoy_revenue_growth_pct": round(
-            (ytd["total_revenue_usd"] / py["total_revenue_usd"] - 1) * 100, 1),
-        "yoy_ebitda_margin_delta_pp": round(
-            ytd["ebitda_margin_pct"] - py["ebitda_margin_pct"], 1),
+            (ytd["total_revenue_usd"] / py["total_revenue_usd"] - 1) * 100, 1
+        ),
+        "yoy_ebitda_margin_delta_pp": round(ytd["ebitda_margin_pct"] - py["ebitda_margin_pct"], 1),
     }
 
 
@@ -111,6 +122,7 @@ def margin_by_segment(country: str | None = None, months: int = 6) -> pd.DataFra
 # Budget consumption / run-rate
 # ---------------------------------------------------------------------------
 
+
 def budget_consumption(cost_type: str | None = None, country: str | None = None) -> pd.DataFrame:
     """Per country x category: annual budget, YTD actual, consumption %,
     run-rate FY forecast %. CAPEX rows also carry committed amounts."""
@@ -133,7 +145,9 @@ def budget_consumption(cost_type: str | None = None, country: str | None = None)
         ytd = float((opex_ytd if b.cost_type == "OPEX" else capex_ytd).get(key, 0.0))
         run_rate_fy = ytd / cfg.MONTHS_ELAPSED * 12
         row = {
-            "country": b.country, "cost_type": b.cost_type, "category": b.category,
+            "country": b.country,
+            "cost_type": b.cost_type,
+            "category": b.category,
             "annual_budget_usd": budget_usd,
             "ytd_actual_usd": round(ytd, 0),
             "consumption_pct": round(ytd / budget_usd * 100, 1),
@@ -147,9 +161,18 @@ def budget_consumption(cost_type: str | None = None, country: str | None = None)
         rows.append(row)
     # Explicit columns so an unmatched filter degrades to an empty-but-typed
     # frame instead of a column-less one (which breaks downstream access).
-    columns = ["country", "cost_type", "category", "annual_budget_usd",
-               "ytd_actual_usd", "consumption_pct", "run_rate_fy_pct",
-               "months_remaining", "committed_usd", "committed_pct"]
+    columns = [
+        "country",
+        "cost_type",
+        "category",
+        "annual_budget_usd",
+        "ytd_actual_usd",
+        "consumption_pct",
+        "run_rate_fy_pct",
+        "months_remaining",
+        "committed_usd",
+        "committed_pct",
+    ]
     df = pd.DataFrame(rows, columns=columns)
     if not df["committed_usd"].notna().any():
         df = df.drop(columns=["committed_usd", "committed_pct"])
@@ -175,6 +198,7 @@ def capex_summary(country: str | None = None) -> dict:
 # OPEX trend (for cost-spike detection & drill-downs)
 # ---------------------------------------------------------------------------
 
+
 def opex_trend(country: str | None = None, months: int = 7) -> pd.DataFrame:
     d = load()
     window = [str(AS_OF_PERIOD - i) for i in range(months - 1, -1, -1)]
@@ -183,8 +207,9 @@ def opex_trend(country: str | None = None, months: int = 7) -> pd.DataFrame:
     return op.groupby(["country", "category", "month"])["amount_usd"].sum().reset_index()
 
 
-def revenue_trend(segment: str | None = None, country: str | None = None,
-                  months: int = 12) -> pd.DataFrame:
+def revenue_trend(
+    segment: str | None = None, country: str | None = None, months: int = 12
+) -> pd.DataFrame:
     d = load()
     window = [str(AS_OF_PERIOD - i) for i in range(months - 1, -1, -1)]
     rev = _f(d["revenue"], country)
@@ -193,9 +218,7 @@ def revenue_trend(segment: str | None = None, country: str | None = None,
     out = rev[rev["month"].isin(window)]
     out = out.groupby(["country", "segment", "month"])["revenue_usd"].sum().reset_index()
     out["mom_pct"] = (
-        out.sort_values("month")
-        .groupby(["country", "segment"])["revenue_usd"]
-        .pct_change() * 100
+        out.sort_values("month").groupby(["country", "segment"])["revenue_usd"].pct_change() * 100
     ).round(1)
     return out
 
@@ -203,6 +226,7 @@ def revenue_trend(segment: str | None = None, country: str | None = None,
 # ---------------------------------------------------------------------------
 # Receivables: DSO, aging, collections
 # ---------------------------------------------------------------------------
+
 
 def _open_invoices(inv: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
     issued = inv[inv["issue_date"] <= as_of]
@@ -218,10 +242,16 @@ def dso_series(country: str | None = None, months: int = 6) -> pd.DataFrame:
         p = AS_OF_PERIOD - i
         end = p.end_time.normalize()
         ar = _open_invoices(inv, end)["amount_usd"].sum()
-        billed_90 = inv[(inv["issue_date"] > end - pd.Timedelta(days=90))
-                        & (inv["issue_date"] <= end)]["amount_usd"].sum()
-        rows.append({"month": str(p), "ar_usd": round(ar, 0),
-                     "dso_days": round(ar / (billed_90 / 90), 1) if billed_90 else 0.0})
+        billed_90 = inv[
+            (inv["issue_date"] > end - pd.Timedelta(days=90)) & (inv["issue_date"] <= end)
+        ]["amount_usd"].sum()
+        rows.append(
+            {
+                "month": str(p),
+                "ar_usd": round(ar, 0),
+                "dso_days": round(ar / (billed_90 / 90), 1) if billed_90 else 0.0,
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -242,9 +272,9 @@ def collections_summary(country: str | None = None) -> dict:
     def month_ratio(p: pd.Period) -> float:
         start, end = p.start_time, p.end_time.normalize()
         billed = inv[(inv["issue_date"] >= start) & (inv["issue_date"] <= end)]["amount_usd"].sum()
-        collected = inv[inv["paid_date"].notna()
-                        & (inv["paid_date"] >= start)
-                        & (inv["paid_date"] <= end)]["amount_usd"].sum()
+        collected = inv[
+            inv["paid_date"].notna() & (inv["paid_date"] >= start) & (inv["paid_date"] <= end)
+        ]["amount_usd"].sum()
         return round(collected / billed * 100, 1) if billed else 0.0
 
     dso = dso_series(country)
@@ -274,9 +304,12 @@ def top_overdue_clients(limit: int = 5) -> pd.DataFrame:
         overdue_usd=("amount_usd", "sum"),
         max_overdue_days=("overdue_days", "max"),
     )
-    over60 = (overdue[overdue["overdue_days"] > 60]
-              .groupby(["country", "client_id"])["amount_usd"].sum()
-              .rename("overdue_over60_usd"))
+    over60 = (
+        overdue[overdue["overdue_days"] > 60]
+        .groupby(["country", "client_id"])["amount_usd"]
+        .sum()
+        .rename("overdue_over60_usd")
+    )
     agg = agg.join(over60).fillna({"overdue_over60_usd": 0.0}).reset_index()
     agg = agg.merge(clients, on=["country", "client_id"])
 
@@ -288,11 +321,22 @@ def top_overdue_clients(limit: int = 5) -> pd.DataFrame:
     keys = list(zip(agg["country"], agg["client_id"], strict=True))
     agg["monthly_billing_usd"] = [round(client_billed.get(k, 0.0) / 6, 0) for k in keys]
     agg["share_of_country_b2b_pct"] = [
-        round(client_billed.get(k, 0.0) / country_billed[k[0]] * 100, 1) for k in keys]
+        round(client_billed.get(k, 0.0) / country_billed[k[0]] * 100, 1) for k in keys
+    ]
     agg["overdue_vs_monthly_billing_pct"] = (
-        agg["overdue_over60_usd"] / agg["monthly_billing_usd"] * 100).round(0)
-    cols = ["client_id", "client_name", "country", "sector", "credit_terms_days",
-            "overdue_usd", "overdue_over60_usd", "max_overdue_days",
-            "monthly_billing_usd", "share_of_country_b2b_pct",
-            "overdue_vs_monthly_billing_pct"]
+        agg["overdue_over60_usd"] / agg["monthly_billing_usd"] * 100
+    ).round(0)
+    cols = [
+        "client_id",
+        "client_name",
+        "country",
+        "sector",
+        "credit_terms_days",
+        "overdue_usd",
+        "overdue_over60_usd",
+        "max_overdue_days",
+        "monthly_billing_usd",
+        "share_of_country_b2b_pct",
+        "overdue_vs_monthly_billing_pct",
+    ]
     return agg.sort_values("overdue_usd", ascending=False).head(limit)[cols]

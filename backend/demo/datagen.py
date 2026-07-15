@@ -30,11 +30,20 @@ def _month_index(period: pd.Period) -> int:
 
 _SECTORS = ["banca", "retail", "manufactura", "logística", "energía", "agroindustria", "salud"]
 _NAMES = [
-    "Banco Continental del Istmo", "Distribuidora Andina de Alimentos",
-    "Cementos del Pacífico", "Logística Interoceánica", "Energía Verde Latam",
-    "Agroexportadora del Valle", "Clínicas Integradas", "Textiles Metropolitanos",
-    "Cadena de Farmacias Salud+", "Aerolínea Regional Cóndor", "Minera Altiplano",
-    "Supermercados La Cosecha", "Aseguradora del Sur", "Constructora Meridiano",
+    "Banco Continental del Istmo",
+    "Distribuidora Andina de Alimentos",
+    "Cementos del Pacífico",
+    "Logística Interoceánica",
+    "Energía Verde Latam",
+    "Agroexportadora del Valle",
+    "Clínicas Integradas",
+    "Textiles Metropolitanos",
+    "Cadena de Farmacias Salud+",
+    "Aerolínea Regional Cóndor",
+    "Minera Altiplano",
+    "Supermercados La Cosecha",
+    "Aseguradora del Sur",
+    "Constructora Meridiano",
 ]
 
 
@@ -55,19 +64,17 @@ def _build_clients(rng: np.random.Generator) -> pd.DataFrame:
             is_gov = country == "Guatemala" and i == 0
             client_id = f"{cfg.COUNTRY_CODE[country]}-B2B-{i + 1:03d}"
             assert not is_gov or client_id == cfg.SEEDED_CLIENT_ID
-            name = (
-                cfg.SEEDED_CLIENT_NAME
-                if is_gov
-                else f"{_NAMES[i % len(_NAMES)]} {country}"
+            name = cfg.SEEDED_CLIENT_NAME if is_gov else f"{_NAMES[i % len(_NAMES)]} {country}"
+            rows.append(
+                {
+                    "client_id": client_id,
+                    "client_name": name,
+                    "country": country,
+                    "sector": "gobierno" if is_gov else _SECTORS[i % len(_SECTORS)],
+                    "credit_terms_days": 60 if is_gov else cfg.CREDIT_TERMS_DAYS[i % 3],
+                    "monthly_billing_usd": round(b2b_monthly * share, 2),
+                }
             )
-            rows.append({
-                "client_id": client_id,
-                "client_name": name,
-                "country": country,
-                "sector": "gobierno" if is_gov else _SECTORS[i % len(_SECTORS)],
-                "credit_terms_days": 60 if is_gov else cfg.CREDIT_TERMS_DAYS[i % 3],
-                "monthly_billing_usd": round(b2b_monthly * share, 2),
-            })
     return pd.DataFrame(rows)
 
 
@@ -87,29 +94,33 @@ def _build_invoices(rng: np.random.Generator, clients: pd.DataFrame) -> pd.DataF
             delay = float(np.clip(rng.normal(6, 5), 0, 24))
             delay += gt_stress.get(str(m), 0) if c.country == "Guatemala" else 0
             paid = due + timedelta(days=round(delay))
-            rows.append({
-                "invoice_id": f"INV-{c.client_id}-{m}",
-                "client_id": c.client_id,
-                "country": c.country,
-                "issue_date": issue.date(),
-                "due_date": due.date(),
-                "amount_usd": round(amount, 2),
-                "paid_date": paid.date(),
-            })
+            rows.append(
+                {
+                    "invoice_id": f"INV-{c.client_id}-{m}",
+                    "client_id": c.client_id,
+                    "country": c.country,
+                    "issue_date": issue.date(),
+                    "due_date": due.date(),
+                    "amount_usd": round(amount, 2),
+                    "paid_date": paid.date(),
+                }
+            )
 
     # Seeded A8: three unpaid "connectivity project" invoices for the gov client.
     for ym in ["2025-12", "2026-01", "2026-02"]:
         p = pd.Period(ym, freq="M")
         issue = pd.Timestamp(p.year, p.month, 5)
-        rows.append({
-            "invoice_id": f"INV-{cfg.SEEDED_CLIENT_ID}-{ym}-PROY",
-            "client_id": cfg.SEEDED_CLIENT_ID,
-            "country": "Guatemala",
-            "issue_date": issue.date(),
-            "due_date": (issue + timedelta(days=60)).date(),
-            "amount_usd": 1_370_000.0,
-            "paid_date": None,  # never paid -> >60d overdue bucket at AS_OF
-        })
+        rows.append(
+            {
+                "invoice_id": f"INV-{cfg.SEEDED_CLIENT_ID}-{ym}-PROY",
+                "client_id": cfg.SEEDED_CLIENT_ID,
+                "country": "Guatemala",
+                "issue_date": issue.date(),
+                "due_date": (issue + timedelta(days=60)).date(),
+                "amount_usd": 1_370_000.0,
+                "paid_date": None,  # never paid -> >60d overdue bucket at AS_OF
+            }
+        )
 
     inv = pd.DataFrame(rows)
     as_of_end = pd.Period(cfg.AS_OF, freq="M").end_time.normalize()
@@ -121,6 +132,7 @@ def _build_invoices(rng: np.random.Generator, clients: pd.DataFrame) -> pd.DataF
 # ---------------------------------------------------------------------------
 # Revenue / direct costs / OPEX / CAPEX
 # ---------------------------------------------------------------------------
+
 
 def _build_revenue(rng: np.random.Generator, invoices: pd.DataFrame) -> pd.DataFrame:
     inv = invoices.copy()
@@ -137,13 +149,15 @@ def _build_revenue(rng: np.random.Generator, invoices: pd.DataFrame) -> pd.DataF
                 else:
                     amount = base * mix * (1 + cfg.MONTHLY_GROWTH) ** t
                     amount *= rng.lognormal(0, cfg.BASELINE_NOISE)
-                rows.append({
-                    "month": str(m),
-                    "country": country,
-                    "segment": seg,
-                    "revenue_type": "equipment" if seg == "Equipment" else "service",
-                    "revenue_usd": round(amount, 2),
-                })
+                rows.append(
+                    {
+                        "month": str(m),
+                        "country": country,
+                        "segment": seg,
+                        "revenue_type": "equipment" if seg == "Equipment" else "service",
+                        "revenue_usd": round(amount, 2),
+                    }
+                )
     df = pd.DataFrame(rows)
 
     # Seeded A5: Bolivia prepaid decline in the last two closed months.
@@ -176,8 +190,7 @@ def _build_opex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFrame
         month, country = cast(tuple[str, str], key)
         for cat, rate in cfg.OPEX_RATE.items():
             amount = rev * rate * rng.lognormal(0, 0.010)
-            rows.append({"month": month, "country": country,
-                         "category": cat, "amount_usd": amount})
+            rows.append({"month": month, "country": country, "category": cat, "amount_usd": amount})
     df = pd.DataFrame(rows)
 
     fy25 = df[df["month"].str.startswith("2025")]
@@ -185,20 +198,34 @@ def _build_opex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFrame
 
     # Seeded A1: Guatemala sales & marketing front-loaded to 88% of FY2026 budget.
     budget_gt_sm = fy25_totals.loc[("Guatemala", "sales_marketing")] * cfg.BUDGET_GROWTH
-    weights = {"2026-01": 0.20, "2026-02": 0.19, "2026-03": 0.17,
-               "2026-04": 0.13, "2026-05": 0.10, "2026-06": 0.09}  # sums to 0.88
+    weights = {
+        "2026-01": 0.20,
+        "2026-02": 0.19,
+        "2026-03": 0.17,
+        "2026-04": 0.13,
+        "2026-05": 0.10,
+        "2026-06": 0.09,
+    }  # sums to 0.88
     for month, w in weights.items():
-        mask = ((df["month"] == month) & (df["country"] == "Guatemala")
-                & (df["category"] == "sales_marketing"))
+        mask = (
+            (df["month"] == month)
+            & (df["country"] == "Guatemala")
+            & (df["category"] == "sales_marketing")
+        )
         df.loc[mask, "amount_usd"] = budget_gt_sm * w
 
     # Seeded A2: Colombia energy tariff escalation -> FY run-rate ~120% of budget.
     budget_co_en = fy25_totals.loc[("Colombia", "energy")] * cfg.BUDGET_GROWTH
-    factors = {"2026-01": 1.00, "2026-02": 1.08, "2026-03": 1.16,
-               "2026-04": 1.24, "2026-05": 1.31, "2026-06": 1.38}
+    factors = {
+        "2026-01": 1.00,
+        "2026-02": 1.08,
+        "2026-03": 1.16,
+        "2026-04": 1.24,
+        "2026-05": 1.31,
+        "2026-06": 1.38,
+    }
     for month, f in factors.items():
-        mask = ((df["month"] == month) & (df["country"] == "Colombia")
-                & (df["category"] == "energy"))
+        mask = (df["month"] == month) & (df["country"] == "Colombia") & (df["category"] == "energy")
         df.loc[mask, "amount_usd"] = (budget_co_en / 12) * f
 
     # Seeded A6: Panama energy spike (+19% MoM) in the last closed month.
@@ -217,22 +244,40 @@ def _build_capex(rng: np.random.Generator, revenue: pd.DataFrame) -> pd.DataFram
         month, country = cast(tuple[str, str], key)
         for cat, rate in cfg.CAPEX_RATE.items():
             spent = rev * rate * rng.lognormal(0, 0.015)
-            rows.append({"month": month, "country": country, "category": cat,
-                         "committed_usd": spent * 1.15, "spent_usd": spent})
+            rows.append(
+                {
+                    "month": month,
+                    "country": country,
+                    "category": cat,
+                    "committed_usd": spent * 1.15,
+                    "spent_usd": spent,
+                }
+            )
     df = pd.DataFrame(rows)
 
     # Seeded A3: Colombia fiber buildout overrun — committed 96% of FY budget
     # by June, spend run-rate ~112%.
     fy25 = df[df["month"].str.startswith("2025")]
     budget_co_fiber = (
-        fy25.groupby(["country", "category"])["spent_usd"].sum()
-        .loc[("Colombia", "fiber_transport")] * cfg.BUDGET_GROWTH
+        fy25.groupby(["country", "category"])["spent_usd"]
+        .sum()
+        .loc[("Colombia", "fiber_transport")]
+        * cfg.BUDGET_GROWTH
     )
-    spend_w = {"2026-01": 0.07, "2026-02": 0.08, "2026-03": 0.09,
-               "2026-04": 0.10, "2026-05": 0.11, "2026-06": 0.11}  # sums to 0.56
+    spend_w = {
+        "2026-01": 0.07,
+        "2026-02": 0.08,
+        "2026-03": 0.09,
+        "2026-04": 0.10,
+        "2026-05": 0.11,
+        "2026-06": 0.11,
+    }  # sums to 0.56
     for month, w in spend_w.items():
-        mask = ((df["month"] == month) & (df["country"] == "Colombia")
-                & (df["category"] == "fiber_transport"))
+        mask = (
+            (df["month"] == month)
+            & (df["country"] == "Colombia")
+            & (df["category"] == "fiber_transport")
+        )
         df.loc[mask, "spent_usd"] = budget_co_fiber * w
         df.loc[mask, "committed_usd"] = budget_co_fiber * 0.16  # 6 x 0.16 = 0.96
 
@@ -251,14 +296,28 @@ def _build_budgets(opex: pd.DataFrame, capex: pd.DataFrame) -> pd.DataFrame:
     opex_totals = fy25_opex.groupby(["country", "category"])["amount_usd"].sum()
     for key, total in opex_totals.items():
         country, cat = cast(tuple[str, str], key)
-        rows.append({"year": cfg.BUDGET_YEAR, "country": country, "cost_type": "OPEX",
-                     "category": cat, "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2)})
+        rows.append(
+            {
+                "year": cfg.BUDGET_YEAR,
+                "country": country,
+                "cost_type": "OPEX",
+                "category": cat,
+                "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2),
+            }
+        )
     fy25_capex = capex[capex["month"].str.startswith("2025")]
     capex_totals = fy25_capex.groupby(["country", "category"])["spent_usd"].sum()
     for key, total in capex_totals.items():
         country, cat = cast(tuple[str, str], key)
-        rows.append({"year": cfg.BUDGET_YEAR, "country": country, "cost_type": "CAPEX",
-                     "category": cat, "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2)})
+        rows.append(
+            {
+                "year": cfg.BUDGET_YEAR,
+                "country": country,
+                "cost_type": "CAPEX",
+                "category": cat,
+                "annual_budget_usd": round(total * cfg.BUDGET_GROWTH, 2),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -271,12 +330,19 @@ def _build_targets(revenue: pd.DataFrame, direct_costs: pd.DataFrame) -> pd.Data
     rows = []
     for key in rev_g.index:
         gm = (1 - dc_g[key] / rev_g[key]) * 100
-        rows.append({"year": cfg.BUDGET_YEAR, "country": key[0], "segment": key[1],
-                     "gm_target_pct": round(gm, 1)})
+        rows.append(
+            {
+                "year": cfg.BUDGET_YEAR,
+                "country": key[0],
+                "segment": key[1],
+                "gm_target_pct": round(gm, 1),
+            }
+        )
     return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------------------
+
 
 def generate(verbose: bool = True) -> None:
     rng = np.random.default_rng(cfg.SEED)
@@ -292,9 +358,14 @@ def generate(verbose: bool = True) -> None:
     targets = _build_targets(revenue, direct_costs)
 
     files = {
-        "clients.csv": clients, "invoices.csv": invoices, "revenue.csv": revenue,
-        "direct_costs.csv": direct_costs, "opex.csv": opex, "capex.csv": capex,
-        "budgets.csv": budgets, "targets.csv": targets,
+        "clients.csv": clients,
+        "invoices.csv": invoices,
+        "revenue.csv": revenue,
+        "direct_costs.csv": direct_costs,
+        "opex.csv": opex,
+        "capex.csv": capex,
+        "budgets.csv": budgets,
+        "targets.csv": targets,
     }
     for name, df in files.items():
         df.to_csv(cfg.DATA_DIR / name, index=False)
@@ -305,6 +376,7 @@ def generate(verbose: bool = True) -> None:
 
 def _print_summary(revenue, direct_costs, opex, capex) -> None:
     """Consistency summary so seeded ratios can be eyeballed after generation."""
+
     def ytd(df):
         return df[df["month"].str.startswith("2026")]
 

@@ -1,0 +1,21 @@
+# Host dependencies (macOS-native binaries) — the image runs its own npm install.
+node_modules
+
+# Lockfiles are untracked; keep image builds identical across machines.
+package-lock.json
+
+# Build output
+dist
+dist-ssr
+
+# Logs and local-only files
+*.log
+*.local
+.DS_Store
+
+# Editor metadata and the docker files themselves
+.vscode
+.idea
+.gitignore
+Dockerfile
+.dockerignore

@@ -60,8 +60,7 @@ def rule_budget_consumption() -> list[Alarm]:
     out = []
     bc = fin.budget_consumption()
     hot = bc[
-        (bc["consumption_pct"] > cfg.TH_BUDGET_CONSUMPTION_PCT)
-        & (bc["months_remaining"] >= 2)
+        (bc["consumption_pct"] > cfg.TH_BUDGET_CONSUMPTION_PCT) & (bc["months_remaining"] >= 2)
     ]
     for r in hot.itertuples():
         out.append(
@@ -366,8 +365,7 @@ def rule_concentration() -> list[Alarm]:
     out = []
     top = fin.top_overdue_clients(limit=10)
     hot = top[
-        (top["share_of_country_b2b_pct"] > cfg.TH_CONCENTRATION_PCT)
-        & (top["overdue_usd"] > 0)
+        (top["share_of_country_b2b_pct"] > cfg.TH_CONCENTRATION_PCT) & (top["overdue_usd"] > 0)
     ]
     for r in hot.itertuples():
         out.append(
@@ -424,7 +422,5 @@ if __name__ == "__main__":
     expected, got = set(cfg.EXPECTED_ALARMS), {a.id for a in found}
     print(
         "\nmanifest match:",
-        "OK"
-        if expected == got
-        else f"MISMATCH missing={expected - got} extra={got - expected}",
+        "OK" if expected == got else f"MISMATCH missing={expected - got} extra={got - expected}",
     )

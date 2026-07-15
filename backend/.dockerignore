@@ -1,0 +1,19 @@
+# Never bake secrets into image layers.
+.env
+
+# Host virtualenv (macOS binaries) — the image installs its own deps.
+.venv
+
+# Python / tooling caches
+**/__pycache__
+**/*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Local agent/editor metadata and the docker files themselves
+.agents
+.claude
+.gitignore
+Dockerfile
+.dockerignore

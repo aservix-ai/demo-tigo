@@ -95,9 +95,7 @@ CAPEX_RATE = {
 }
 
 MONTHLY_GROWTH = 0.0025  # ~3% annualized organic growth
-BASELINE_NOISE = (
-    0.012  # sigma of multiplicative noise; low so alarms never fire by accident
-)
+BASELINE_NOISE = 0.012  # sigma of multiplicative noise; low so alarms never fire by accident
 BUDGET_GROWTH = 1.04  # FY2026 budget = FY2025 actual x 1.04 per category
 
 # --- B2B clients / receivables ----------------------------------------------
@@ -124,9 +122,7 @@ TH_REVENUE_DECLINE_PCT = 5.0  # A5: MoM decline >= 5%, 2 consecutive months
 TH_COST_SPIKE_MOM_PCT = 15.0  # A6: OPEX category MoM increase >= 15%
 TH_DSO_RISE_RATIO = 1.10  # A7: DSO > 1.10 x avg of prior 3 months
 TH_COLLECTIONS_MIN_PCT = 90.0  # A7: monthly cash collected < 90% of billings
-TH_OVERDUE_VS_BILLING_PCT = (
-    50.0  # A8: >60d overdue balance > 50% of avg monthly billing
-)
+TH_OVERDUE_VS_BILLING_PCT = 50.0  # A8: >60d overdue balance > 50% of avg monthly billing
 TH_CONCENTRATION_PCT = 15.0  # A9: top client > 15% of country B2B revenue AND overdue
 
 # The seeded government client behind alarms A8/A9 (fictional entity).

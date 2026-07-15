@@ -10,13 +10,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from langchain_core.globals import set_debug
 from langchain_core.messages import AIMessageChunk
+from langchain_core.tracers.schemas import Run
+from langchain_core.tracers.stdout import FunctionCallbackHandler
+from langchain_core.utils.input import get_bolded_text, get_colored_text
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from demo import finance
 from demo.agent import REPORT_REQUEST, build_agent
 from demo.config import DATA_DIR
 from demo.datagen import generate
-from demo.preflight import CHECKS
+from demo.preflight import API_PING_CHECK_NAME, CHECKS
+
+
+# langchain-core's debug ConsoleCallbackHandler assumes string tool inputs
+# (run.inputs["input"]) and raises KeyError('input') on tools with structured
+# args like ours; fall back to the full inputs dict.
+def _safe_on_tool_start(self: FunctionCallbackHandler, run: Run) -> None:
+    crumbs = self.get_breadcrumbs(run)
+    tool_input = run.inputs.get("input", run.inputs)
+    self.function_callback(
+        f"{get_colored_text('[tool/start]', color='green')} "
+        + get_bolded_text(f"[{crumbs}] Entering Tool run with input:\n")
+        + f'"{str(tool_input).strip()}"'
+    )
+
+
+FunctionCallbackHandler._on_tool_start = _safe_on_tool_start  # type: ignore[method-assign]
 
 # Enable LangChain verbose debugging to print model responses in the console
 set_debug(True)
@@ -30,7 +50,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 
 _agent_container: dict[str, Any] = {}
@@ -71,12 +90,14 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
                             print(f"\n[Tool] {tc['name']}({tc['args']})\n", flush=True)
                             yield {
                                 "event": "message",
-                                "data": json.dumps({
-                                    "type": "tool",
-                                    "name": tc["name"],
-                                    "args": tc["args"],
-                                    "content": "",
-                                }),
+                                "data": json.dumps(
+                                    {
+                                        "type": "tool",
+                                        "name": tc["name"],
+                                        "args": tc["args"],
+                                        "content": "",
+                                    }
+                                ),
                             }
     except Exception as e:
         print(f"\n[Error in event generator] {e}\n", flush=True)
@@ -84,12 +105,16 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
             "event": "message",
             "data": json.dumps({"type": "error", "content": str(e)}),
         }
-    finally:
-        print("\n[Stream finished]\n", flush=True)
-        yield {
-            "event": "message",
-            "data": json.dumps({"type": "done", "content": ""}),
-        }
+    # 'done' is emitted after normal completion and after a handled error, but
+    # never from a finally: on client disconnect starlette closes the generator
+    # (GeneratorExit at the suspended yield — a BaseException the except above
+    # cannot swallow) and yielding during close would raise
+    # RuntimeError('async generator ignored GeneratorExit').
+    print("\n[Stream finished]\n", flush=True)
+    yield {
+        "event": "message",
+        "data": json.dumps({"type": "done", "content": ""}),
+    }
 
 
 @app.get("/health")
@@ -98,12 +123,16 @@ def health_check():
 
 
 @app.get("/api/preflight")
-def get_preflight():
+def get_preflight(full: bool = True):
     results = []
     all_passed = True
     first_error = None
 
-    for name, check_fn in CHECKS:
+    # Background polls pass ?full=false to skip only the live NVIDIA API ping
+    # (it can 429 mid-chat); the default / manual-refresh path runs everything.
+    checks = CHECKS if full else [(n, fn) for n, fn in CHECKS if n != API_PING_CHECK_NAME]
+
+    for name, check_fn in checks:
         try:
             error = check_fn()
         except Exception as e:
@@ -211,9 +240,7 @@ async def generate_report():
             if isinstance(content, str):
                 report_content = content
             elif isinstance(content, list):
-                report_content = "".join(
-                    b.get("text", "") for b in content if isinstance(b, dict)
-                )
+                report_content = "".join(b.get("text", "") for b in content if isinstance(b, dict))
 
         return {"status": "success", "report": report_content}
 
@@ -229,6 +256,9 @@ def regenerate_data():
                 with contextlib.suppress(Exception):
                     os.remove(f)
         generate(verbose=False)
+        # Drop the memoized dataframes so tools and preflight recompute from
+        # the regenerated CSVs instead of the pre-regeneration snapshot.
+        finance.load.cache_clear()
         return {"status": "success", "message": "Dataset regenerated successfully"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})

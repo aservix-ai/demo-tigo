@@ -138,13 +138,18 @@ def _check_api_ping() -> str | None:
     return None
 
 
+# The live-API ping is the one check the server's lightweight preflight mode
+# (GET /api/preflight?full=false, used by background polls) skips, so a poll
+# landing mid-chat never burns rate limit against the demo model.
+API_PING_CHECK_NAME = "Ping a la API de NVIDIA"
+
 CHECKS = [
     ("API key en entorno", _check_api_key),
     ("Archivos de datos", _check_files),
     ("Consistencia financiera", _check_consistency),
     ("Manifiesto de alertas (9 exactas)", _check_alarms),
     ("Herramientas del agente", _check_tools),
-    ("Ping a la API de NVIDIA", _check_api_ping),
+    (API_PING_CHECK_NAME, _check_api_ping),
 ]
 
 

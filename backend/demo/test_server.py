@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessageChunk
 
+from demo.preflight import API_PING_CHECK_NAME
 from demo.server import app
 
 client = TestClient(app)
@@ -22,18 +23,19 @@ class MockFinalMessage:
 
 class MockAgent:
     async def astream(self, inputs, config, stream_mode):
-        yield "updates", {
-            "tools": {
-                "messages": [MockToolCallMessage("get_pnl_summary", {"country": "Guatemala"})]
-            }
-        }
+        yield (
+            "updates",
+            {
+                "tools": {
+                    "messages": [MockToolCallMessage("get_pnl_summary", {"country": "Guatemala"})]
+                }
+            },
+        )
         yield "messages", (AIMessageChunk(content="Hola"), None)
         yield "messages", (AIMessageChunk(content=" Mundo"), None)
 
     async def ainvoke(self, inputs, config):
-        return {
-            "messages": [MockFinalMessage("Informe de prueba en markdown")]
-        }
+        return {"messages": [MockFinalMessage("Informe de prueba en markdown")]}
 
 
 def test_health_check():
@@ -72,6 +74,25 @@ def test_get_preflight_failure():
         assert len(data["checks"]) == 2
         assert data["checks"][0]["passed"] is False
         assert data["checks"][1]["passed"] is True
+
+
+def test_get_preflight_lightweight_skips_api_ping():
+    mock_checks = [
+        ("Check 1", lambda: None),
+        (API_PING_CHECK_NAME, lambda: "should never run in lightweight mode"),
+    ]
+    with patch("demo.server.CHECKS", mock_checks):
+        # Background-poll path: ping filtered out, everything else runs.
+        response = client.get("/api/preflight?full=false")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ready"] is True
+        assert [c["name"] for c in data["checks"]] == ["Check 1"]
+
+        # Default path still runs the full suite, including the ping.
+        response = client.get("/api/preflight")
+        assert response.status_code == 500
+        assert response.json()["error"] == "should never run in lightweight mode"
 
 
 def test_chat_missing_prompt():

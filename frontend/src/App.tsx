@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import type { PreflightData } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -22,37 +22,73 @@ function App() {
     setThreadId(`tigo-session-${randomId}`);
   }, []);
 
-  const checkPreflight = async () => {
-    setIsRefreshing(true);
+  // Consecutive failed background polls. A single transient failure
+  // (timeout, 429) must not flip the app into degraded mode.
+  const failedBackgroundPolls = useRef(0);
+  // Last applied ready state. While degraded, background polls escalate to
+  // the full check so a lightweight ready:true can never mask a failed LLM
+  // ping discovered by a full run.
+  const lastReadyRef = useRef<boolean | null>(null);
+
+  const applyPreflightResult = (data: PreflightData, background: boolean) => {
+    if (background && !data.ready) {
+      failedBackgroundPolls.current += 1;
+      // Grace period: keep the previous status until two background polls
+      // in a row have failed.
+      if (failedBackgroundPolls.current < 2) return;
+    } else {
+      failedBackgroundPolls.current = 0;
+    }
+    lastReadyRef.current = data.ready;
+    setPreflight(data);
+  };
+
+  const runPreflight = async (background: boolean) => {
+    if (!background) setIsRefreshing(true);
+    // Background polls use the lightweight check that skips the live LLM
+    // ping — but only while the app is healthy; once degraded they run the
+    // full suite so recovery is verified truthfully.
+    const useLight = background && lastReadyRef.current !== false;
     try {
-      const response = await fetch('/api/preflight');
+      const response = await fetch(
+        useLight ? '/api/preflight?full=false' : '/api/preflight'
+      );
       const data = await response.json();
-      setPreflight(data);
+      applyPreflightResult(data, background);
     } catch (err: any) {
       console.error('Preflight check failed:', err);
-      setPreflight({
-        status: 'error',
-        ready: false,
-        error: 'Failed to connect to backend server.',
-        checks: [
-          {
-            name: 'API Server Connection',
-            passed: false,
-            error: 'Could not connect. Is the backend server running?',
-          },
-        ],
-      });
+      applyPreflightResult(
+        {
+          status: 'error',
+          ready: false,
+          error: 'Failed to connect to backend server.',
+          checks: [
+            {
+              name: 'API Server Connection',
+              passed: false,
+              error: 'Could not connect. Is the backend server running?',
+            },
+          ],
+        },
+        background
+      );
     } finally {
-      setIsRefreshing(false);
+      if (!background) setIsRefreshing(false);
     }
   };
+
+  // Full check: used on mount, by the Header refresh button, and after
+  // regenerating data. Its result is applied immediately.
+  const checkPreflight = () => runPreflight(false);
 
   // Run preflight check on mount
   useEffect(() => {
     checkPreflight();
 
-    // Poll preflight status every 15 seconds
-    const interval = setInterval(checkPreflight, 15000);
+    // Poll preflight status every 2 minutes. Background polls hit the
+    // lightweight endpoint and only degrade the UI after two consecutive
+    // failures; any success recovers immediately.
+    const interval = setInterval(() => runPreflight(true), 120000);
     return () => clearInterval(interval);
   }, []);
 
@@ -64,7 +100,15 @@ function App() {
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
       }
-      alert('Mock dataset regenerated successfully!');
+      // The old agent thread memory and the visible report quote
+      // pre-regeneration figures, so start a fresh session.
+      const randomId = Math.random().toString(36).substring(2, 10);
+      setThreadId(`tigo-session-${randomId}`);
+      setMessages([]);
+      setReportText('');
+      alert(
+        'Mock dataset regenerated successfully! Chat session and report were reset.'
+      );
       await checkPreflight();
     } catch (err: any) {
       alert(`Failed to regenerate data: ${err.message}`);

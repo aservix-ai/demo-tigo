@@ -31,6 +31,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight stream when the component unmounts (e.g. switching
+  // tabs) so the orphaned read loop stops appending to App-owned messages.
+  // Safe under StrictMode's dev double-mount: streams only start from user
+  // submits, so no stream exists during the mount/cleanup/remount cycle and
+  // the abort is a no-op.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
@@ -41,6 +54,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, activeTools, isLoading]);
+
+  // Remove the pre-created assistant bubble if it never received content or
+  // tool calls (stream errored, sent an in-band error, or was aborted).
+  const removeTrailingEmptyAssistant = () => {
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (
+        last &&
+        last.role === 'assistant' &&
+        !last.content &&
+        (!last.tools || last.tools.length === 0)
+      ) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,11 +91,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       { role: 'assistant', content: '', tools: [] },
     ]);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userText, thread_id: threadId }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -133,6 +167,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 });
               } else if (payload.type === 'error') {
                 setError(payload.content);
+                removeTrailingEmptyAssistant();
               } else if (payload.type === 'done') {
                 // Done event
               }
@@ -143,22 +178,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         }
       }
     } catch (err: any) {
-      console.error('Chat error:', err);
-      setError(err.message || 'An unexpected error occurred.');
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (
-          last &&
-          last.role === 'assistant' &&
-          !last.content &&
-          (!last.tools || last.tools.length === 0)
-        ) {
-          updated.pop();
-        }
-        return updated;
-      });
+      if (err?.name !== 'AbortError') {
+        console.error('Chat error:', err);
+        setError(err.message || 'An unexpected error occurred.');
+      }
+      removeTrailingEmptyAssistant();
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsLoading(false);
       setActiveTools([]);
     }

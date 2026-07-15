@@ -9,7 +9,10 @@ services:
       - ./backend:/app
       - /app/.venv
     env_file:
-      - ./backend/.env
+      # Optional so a fresh clone (no gitignored .env) still starts — the app
+      # then boots into its designed degraded mode instead of compose aborting.
+      - path: ./backend/.env
+        required: false
     networks:
       - demo-network
 

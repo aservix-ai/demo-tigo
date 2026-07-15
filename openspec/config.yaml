@@ -20,8 +20,9 @@ rules:
     - Group by phase, use hierarchical numbering
     - Keep tasks completable in one session
   apply:
-    - Follow existing code patterns
     tdd: false
+    guidelines:
+      - Follow existing code patterns
   verify:
     test_command: "python3 main.py preflight"
     build_command: ""

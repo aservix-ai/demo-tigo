@@ -4,16 +4,28 @@ interface MarkdownProps {
   content: string;
 }
 
-function parseTable(lines: string[]): string {
-  if (lines.length < 2) return '';
-  // Check if second line is a separator like |---|---|
-  const hasSeparator = lines[1].includes('-');
-  const startIndex = hasSeparator ? 2 : 1;
-  const headers = lines[0]
-    .split('|')
-    .map((x) => x.trim())
-    .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+// A GFM table separator row: each cell is an optional colon, one or more
+// dashes, then an optional colon (e.g. |---|:--:|). Data rows that merely
+// contain hyphens (negative variances, dates) do NOT match.
+const TABLE_SEPARATOR = /^\|(?:\s*:?-+:?\s*\|)+$/;
+// Stray separators inside the body need 2+ dashes per cell so an all-dash
+// data row like "| - | - |" is kept as data.
+const TABLE_BODY_SEPARATOR = /^\|(?:\s*:?-{2,}:?\s*\|)+$/;
 
+function splitRow(line: string): string[] {
+  return line
+    .split('|')
+    .map((c) => c.trim())
+    .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+}
+
+function parseTable(lines: string[]): string {
+  if (lines.length === 0) return '';
+  // First line is always the header; skip the |---| separator when present.
+  const hasSeparator = lines.length > 1 && TABLE_SEPARATOR.test(lines[1]);
+  const startIndex = hasSeparator ? 2 : 1;
+
+  const headers = splitRow(lines[0]);
   const headerHtml =
     '<thead><tr>' +
     headers.map((h) => `<th>${h}</th>`).join('') +
@@ -21,10 +33,8 @@ function parseTable(lines: string[]): string {
 
   let bodyHtml = '<tbody>';
   for (let i = startIndex; i < lines.length; i++) {
-    const cells = lines[i]
-      .split('|')
-      .map((c) => c.trim())
-      .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    if (TABLE_BODY_SEPARATOR.test(lines[i])) continue;
+    const cells = splitRow(lines[i]);
     bodyHtml += '<tr>' + cells.map((c) => `<td>${c}</td>`).join('') + '</tr>';
   }
   bodyHtml += '</tbody>';
@@ -36,7 +46,7 @@ function renderMarkdown(md: string): string {
   if (!md) return '';
   let html = md;
 
-  // Replace HTML special characters to prevent XSS (allowing tags we will generate)
+  // Escape HTML special characters to prevent XSS (tags we generate come after)
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -44,23 +54,15 @@ function renderMarkdown(md: string): string {
 
   // Headers
   html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
-  html = html.replace(/^## (.*?)$/gm, '<h2>$2.5 $1</h2>'); // Wait, let's keep original format
-  // Ah, let's just do standard header replacement:
-  html = md // Let's use md directly or escape it and then format.
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Parse Headers
-  html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
   html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
   html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
   html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
 
   // Bold
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // Italic
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  // Italic: delimiters must hug non-whitespace and stay on one line, so
+  // stray asterisks (footnote markers) never pair up across the text
+  html = html.replace(/\*([^\s*\n](?:[^*\n]*[^\s*\n])?)\*/g, '<em>$1</em>');
   // Inline Code
   html = html.replace(/`(.*?)`/g, '<code>$1</code>');
 

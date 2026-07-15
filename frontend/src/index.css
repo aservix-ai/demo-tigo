@@ -896,6 +896,11 @@ body {
   color: var(--text);
 }
 
+/* Error box stacked above a preserved report (not vertically centered) */
+.report-error-box.report-error-inline {
+  margin: 0 auto 24px;
+}
+
 /* Premium Markdown Document (Report Paper) */
 .report-paper {
   max-width: 800px;

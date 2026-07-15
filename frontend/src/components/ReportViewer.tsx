@@ -20,7 +20,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
 
     setIsLoading(true);
     setError(null);
-    setReportText('');
+    // Keep the current report until a successful response replaces it, so a
+    // failed regeneration does not destroy the on-screen report.
 
     try {
       const response = await fetch('/api/report', {
@@ -46,10 +47,38 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!reportText) return;
-    navigator.clipboard.writeText(reportText);
-    alert('Report copied to clipboard!');
+    let copied = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(reportText);
+        copied = true;
+      } catch (err) {
+        console.error('Clipboard API copy failed:', err);
+      }
+    }
+    if (!copied) {
+      // Fallback for non-secure origins (e.g. LAN demo over plain http),
+      // where navigator.clipboard is unavailable.
+      const textarea = document.createElement('textarea');
+      textarea.value = reportText;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        copied = document.execCommand('copy');
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+      }
+      document.body.removeChild(textarea);
+    }
+    alert(
+      copied
+        ? 'Report copied to clipboard!'
+        : 'Failed to copy report to clipboard.'
+    );
   };
 
   return (
@@ -117,55 +146,69 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
               retrieving collection statuses, and scanning active risk alarms.
             </p>
           </div>
-        ) : error ? (
-          <div className="report-error-box">
-            <svg
-              className="error-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-              />
-            </svg>
-            <h3>Report Generation Failed</h3>
-            <p>{error}</p>
-            <button
-              onClick={handleGenerateReport}
-              className="btn btn-primary mt-4"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : reportText ? (
-          <div className="report-paper">
-            <Markdown content={reportText} />
-          </div>
         ) : (
-          <div className="report-empty-state">
-            <svg
-              className="empty-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-              />
-            </svg>
-            <h3>No Report Generated</h3>
-            <p>
-              Click the "Generate June 2026 Report" button above to run the
-              analysis pipeline and build the executive FP&A report.
-            </p>
-          </div>
+          <>
+            {error && (
+              <div
+                className={`report-error-box${
+                  reportText ? ' report-error-inline' : ''
+                }`}
+              >
+                <svg
+                  className="error-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                  />
+                </svg>
+                <h3>Report Generation Failed</h3>
+                <p>{error}</p>
+                {reportText && (
+                  <p>The previously generated report is preserved below.</p>
+                )}
+                <button
+                  onClick={handleGenerateReport}
+                  className="btn btn-primary mt-4"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+            {reportText ? (
+              <div className="report-paper">
+                <Markdown content={reportText} />
+              </div>
+            ) : (
+              !error && (
+                <div className="report-empty-state">
+                  <svg
+                    className="empty-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                  <h3>No Report Generated</h3>
+                  <p>
+                    Click the "Generate June 2026 Report" button above to run the
+                    analysis pipeline and build the executive FP&A report.
+                  </p>
+                </div>
+              )
+            )}
+          </>
         )}
       </div>
     </div>

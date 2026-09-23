@@ -5,10 +5,10 @@ that enforces the report structure, Spanish output and the no-arithmetic rule.
 import os
 
 from langchain.agents import create_agent
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from langgraph.checkpoint.memory import InMemorySaver
 
 from . import config as cfg
+from .llm import RetryingChatNVIDIA
 from .tools import ALL_TOOLS
 
 SYSTEM_PROMPT = f"""Eres el analista senior de FP&A de Tigo (Millicom) para \
@@ -68,7 +68,7 @@ REPORT_REQUEST = (
 
 
 def build_agent():
-    model = ChatNVIDIA(
+    model = RetryingChatNVIDIA(
         model=cfg.MODEL_ID,
         api_key=os.environ["NVIDIA_API_KEY"],
         temperature=1,

@@ -20,6 +20,7 @@ from demo import finance
 from demo.agent import REPORT_REQUEST, build_agent
 from demo.config import DATA_DIR
 from demo.datagen import generate
+from demo.llm import friendly_error
 from demo.preflight import API_PING_CHECK_NAME, CHECKS
 
 
@@ -103,7 +104,7 @@ async def event_generator(prompt: str, thread_id: str, agent) -> AsyncGenerator[
         print(f"\n[Error in event generator] {e}\n", flush=True)
         yield {
             "event": "message",
-            "data": json.dumps({"type": "error", "content": str(e)}),
+            "data": json.dumps({"type": "error", "content": friendly_error(e)}),
         }
     # 'done' is emitted after normal completion and after a handled error, but
     # never from a finally: on client disconnect starlette closes the generator
@@ -245,7 +246,10 @@ async def generate_report():
         return {"status": "success", "report": report_content}
 
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
+        print(f"\n[Error in /api/report] {e}\n", flush=True)
+        return JSONResponse(
+            status_code=500, content={"status": "error", "error": friendly_error(e)}
+        )
 
 
 @app.post("/api/data/regenerate")
